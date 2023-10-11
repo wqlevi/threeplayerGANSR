@@ -1,0 +1,6 @@
+local_pretrained_C16_res10/
+./ipynb_checkpoints/
+./**/__pycache__/
+saved_models/
+MedicalNet/
+wandb/
