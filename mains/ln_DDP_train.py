@@ -1,9 +1,4 @@
-# TODO
-# -[x] ViT, SwinIR backbone
-# -[x] YAML file for config experiment
-# -[x] residual connection in Unet, improving PSNR
-# -[ ] Logging experiments with logging libarary
-# -[x] frequency guided Dnet
+
 import os, sys, argparse
 #sys.path.append("../")
 import wandb
