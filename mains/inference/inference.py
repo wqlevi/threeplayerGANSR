@@ -1,3 +1,7 @@
+"""
+Use this script only when you want to operate SR on each patch of the brain volume, then stich them together
+"""
+
 import nibabel as nb
 import numpy as np
 import torch
@@ -43,7 +47,7 @@ def load_model(opt_dict,*,state_key = 'state_dict', **kwargs):
     new_model = load_pretrained(new_model,ckp_path,state_key,**kwargs)
     return new_model
 
-def assemble_img_X64(crop_list,new_shape,scale=1):
+def assemble_img(crop_list,new_shape,scale=1):
     global X_NUM,Y_NUM,Z_NUM 
     X_NUM,Y_NUM,Z_NUM = [int(np.ceil(x/64)) for x in new_shape] # num of non-overlapping crops along each dim
     global CROP_SIZE
@@ -68,29 +72,27 @@ def center_crop(img,cropx,cropy,cropz):
 
 def main(opt_dict):
     # --------global parameters---------- #
-    try:
-        hr_img_path = opt_dict['hr_path']
-    except IndexError:
-        hr_img_path = '/big_data/qi1/transfer_folder_HPC/LS2009_demean.nii'
-    Crop = crop_3d(f"{hr_img_path}",step_size = 64)
-    crop_list,newshape = Crop()
+    
+    hr_img_path = opt_dict['hr_path']
     global device
     device  = torch.device('cuda:0')
     hr_shape = 64 # input orig crop size
     scale = 1
 
+    Crop = crop_3d(f"{hr_img_path}",step_size = 64) # patch brain volume into 64*64*64 patches
+    crop_list,newshape = Crop()
+    
     # --------load model---------- #
     new_model = load_model(opt_dict)
 
-    # --------crop & assemble---------- #
+    # --------infer on patches & assemble them---------- #
     tmp = torch.stack([produce(new_model,x,scale,device) for x in crop_list]).detach().cpu()
-    new_img = assemble_img_X64(tmp,newshape,scale)
+    new_img = assemble_img(tmp,newshape,scale)
     
     # --------save & viz---------- #
     hr_nii = nb.load(f"{hr_img_path}")
-    new_img = center_crop(new_img,*hr_nii.shape)
-    #hr_nii = Crop.pad_new_nii(hr_nii)
-    hr = hr_nii.get_fdata()
+    new_img = center_crop(new_img,*hr_nii.shape) #making sure the SR has the same size as HR
+    
     if opt_dict['save_nii']:
         os.makedirs(f"{opt_dict['RootPath']}/{opt_dict['CkpName']}/saved_nii", exist_ok = True)
         tmp_nii = nb.Nifti1Image(new_img,hr_nii.affine)
