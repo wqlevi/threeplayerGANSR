@@ -7,4 +7,5 @@ name_ckp: 'testing'
 G_type: 'Generator'
 D_type: 'Discriminator'
 FE_type: 'resnet10'
+update_FE: true
 

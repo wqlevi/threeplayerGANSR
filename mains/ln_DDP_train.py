@@ -43,8 +43,10 @@ class DataModule(L.LightningDataModule):
 
         self.shape = hr_shape
         self.lr_shape = int(hr_shape/2)
-        self.norm = transforms.Lambda(lambda x : (x - mean)/std)
+        #self.norm = transforms.Lambda(lambda x : (x - mean)/std)
         self.files = sorted(glob.glob(self.data_dir+'/*nii*'))
+
+        self.split_ratio:float = 1.
     def __getitem__(self,index):
         img = nb.load(self.files[index%len(self.files)]).get_fdata()
         img = torch.Tensor(img).unsqueeze(0).unsqueeze(0) #make it 5D
@@ -56,7 +58,7 @@ class DataModule(L.LightningDataModule):
     def setup(self, stage=None):
         if stage == "fit" or stage is None:
             trainset = DataModule(self.shape, self.data_dir, self.batch_size, self.num_workers)
-            self.trainset,self.validset = random_split(trainset, [len(trainset)//4, len(trainset)-len(trainset)//4])
+            self.trainset,self.validset = random_split(trainset, [self.split_ratio, 1- self.split_ratio])
     def train_dataloader(self):
         return DataLoader(
             self.trainset,
@@ -220,7 +222,7 @@ if __name__ == '__main__':
             batch_size = opt.batch_size,
             num_workers=32)
 
-    dp = DDPStrategy(process_group_backend='gloo',
+    dp = DDPStrategy(process_group_backend='gloo', # or nccl as default
                      find_unused_parameters=True)
     ckp_path = os.getcwd()+ "/saved_models/" + opt.model_name + "/" + opt.name_ckp + "/checkpoints/"
     checkpoint_callback = ModelCheckpoint(dirpath = ckp_path,
